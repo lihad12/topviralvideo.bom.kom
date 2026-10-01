@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tap Master - Mini Game</title>
+
+<!-- Telegram Web App SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Adsgram SDK -->
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: linear-gradient(160deg, #1a1a2e, #16213e);
+    color: #fff; min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px; user-select: none;
+  }
+  .card {
+    background: rgba(255,255,255,0.06);
+    border-radius: 24px; padding: 28px 24px;
+    width: 100%; max-width: 380px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  .sub { font-size: 13px; opacity: 0.6; margin-bottom: 20px; }
+  .score-box {
+    background: rgba(0,0,0,0.3);
+    border-radius: 16px; padding: 16px; margin-bottom: 18px;
+  }
+  .score-label { font-size: 12px; opacity: 0.6; letter-spacing: 1px; }
+  .score-val { font-size: 42px; font-weight: 700; color: #4ade80; }
+  #tapBtn {
+    width: 100%; padding: 22px;
+    font-size: 20px; font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border: none; border-radius: 18px;
+    cursor: pointer; transition: transform 0.1s;
+    box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+  }
+  #tapBtn:active { transform: scale(0.96); }
+  #tapBtn:disabled { opacity: 0.5; }
+  .ad-btn {
+    width: 100%; padding: 14px; margin-top: 12px;
+    font-size: 15px; font-weight: 600;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: #fff; border: none; border-radius: 14px;
+    cursor: pointer;
+  }
+  .ad-btn:disabled { opacity: 0.5; }
+  .info { font-size: 11px; opacity: 0.4; margin-top: 16px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🎯 Tap Master</h1>
+  <p class="sub">দ্রুত ট্যাপ করুন, স্কোর বাড়ান</p>
+
+  <div class="score-box">
+    <div class="score-label">স্কোর</div>
+    <div class="score-val" id="score">0</div>
+  </div>
+
+  <button id="tapBtn">ট্যাপ করুন</button>
+  <button class="ad-btn" id="adBtn">🎁 বিজ্ঞাপন দেখে +৫০ স্কোর</button>
+
+  <p class="info">
+    Adsgram Rewarded Ad ইন্টিগ্রেটেড।<br>
+    ব্লক ID আপনার নিজের বসাতে হবে।
+  </p>
+</div>
+
+<script>
+  // Telegram WebApp init
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor?.('#1a1a2e');
+  }
+
+  let score = 0;
+  let adCooldown = false;
+  const scoreEl = document.getElementById('score');
+  const tapBtn = document.getElementById('tapBtn');
+  const adBtn = document.getElementById('adBtn');
+
+  // আপনার Adsgram Block ID এখানে বসান
+  const AD_BLOCK_ID = 'YOUR_BLOCK_ID_HERE';
+
+  let adController = null;
+  try {
+    if (window.Adsgram) {
+      adController = window.Adsgram.init({ blockId: AD_BLOCK_ID });
+    }
+  } catch (e) {
+    console.warn('Adsgram init failed', e);
+  }
+
+  // Tap game
+  tapBtn.addEventListener('click', () => {
+    score += 1;
+    scoreEl.textContent = score;
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  });
+
+  // Rewarded ad
+  adBtn.addEventListener('click', async () => {
+    if (adCooldown) return;
+    if (!adController) {
+      alert('Adsgram লোড হয়নি। ব্লক ID চেক করুন।');
+      return;
+    }
+    adCooldown = true;
+    adBtn.disabled = true;
+    adBtn.textContent = 'বিজ্ঞাপন লোড হচ্ছে...';
+
+    try {
+      const result = await adController.show();
+      // result.done === true হলে ইউজার ad সম্পূর্ণ দেখেছে
+      if (result?.done) {
+        score += 50;
+        scoreEl.textContent = score;
+        adBtn.textContent = '✅ +৫০ স্কোর পেয়েছেন!';
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else {
+        adBtn.textContent = '❌ ad সম্পূর্ণ হয়নি';
+      }
+    } catch (err) {
+      console.error(err);
+      adBtn.textContent = '❌ ad দেখানো যায়নি';
+    }
+
+    setTimeout(() => {
+      adCooldown = false;
+      adBtn.disabled = false;
+      adBtn.textContent = '🎁 বিজ্ঞাপন দেখে +৫০ স্কোর';
+    }, 3000);
+  });
+</script>
+</body>
+</html>
